@@ -21,7 +21,7 @@ Qwen3-30B-A3B at 14.46 GB (Apple Silicon, MLX) — equal-bytes suite:
   MMLU-style ranking and zero-shim loading — see "Honest limits".
 ```
 
-📄 **[Paper draft](paper/topiary.md)** · 🌐 **[Project page](https://jesusluque.github.io/topiary/)** · 🤗 Models: [flagship](https://huggingface.co/jesusluque/qwen3-30b-topiary) · [uniform w640](https://huggingface.co/jesusluque/qwen3-30b-topiary-w640) · [code w576](https://huggingface.co/jesusluque/qwen3-30b-topiary-w576-code) (private until release)
+📄 **[Paper draft](paper/topiary.md)** · 🌐 **[Project page](https://jesusluque.github.io/topiary/)** · 🤗 Models: [flagship](https://huggingface.co/jesusluque/qwen3-30b-topiary) · [uniform w640](https://huggingface.co/jesusluque/qwen3-30b-topiary-w640) · [code w576](https://huggingface.co/jesusluque/qwen3-30b-topiary-w576-code)
 
 ## The idea, in three steps
 
@@ -168,8 +168,8 @@ docs/              project page (GitHub Pages)
 
 ## Status
 
-Private preview. The three checkpoints above are uploaded (private); method and
-models go public together.
+Public release (August 2026): method, tools, paper draft and the three
+checkpoints, published together.
 
 ## Citing Topiary
 
