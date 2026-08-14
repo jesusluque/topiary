@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topiary — salience-shaped MoE checkpoints</title>
+<meta name="description" content="A training-free width axis for compressing Mixture-of-Experts models that beats lower-bit quantization at equal memory.">
+<style>
+:root{
+  --bg:#faf9f6; --surface:#ffffff; --ink:#1a1f16; --ink-2:#4a5244; --muted:#7a8272;
+  --accent:#2e6e3e; --accent-2:#7fae6a; --line:#e3e1da; --win:#eaf3ea; --code:#f2f1ec;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14170f; --surface:#1c2016; --ink:#e8eadf; --ink-2:#b9bfae; --muted:#848b78;
+    --accent:#8fc47a; --accent-2:#5a8a4a; --line:#2c3124; --win:#20301e; --code:#22261b;
+  }
+}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:17px/1.65 -apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:880px;margin:0 auto;padding:0 24px 96px}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+header{padding:88px 0 40px;text-align:center}
+h1{font-size:56px;letter-spacing:-.02em;line-height:1.05}
+.tag{margin-top:18px;font-size:21px;color:var(--ink-2);max-width:620px;margin-inline:auto}
+.links{margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.links a{border:1px solid var(--line);background:var(--surface);padding:9px 18px;border-radius:999px;font-size:15px;color:var(--ink)}
+.links a.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.links a:hover{text-decoration:none;border-color:var(--accent)}
+.epigraph{margin-top:22px;font-style:italic;font-size:16px;color:var(--muted)}
+section{margin-top:72px}
+h2{font-size:26px;letter-spacing:-.01em;margin-bottom:14px}
+h2 .n{color:var(--muted);font-weight:400;margin-right:8px}
+p{color:var(--ink-2);margin-top:10px}
+strong{color:var(--ink)}
+.hero-table{margin-top:32px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:8px 4px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}
+th,td{text-align:right;padding:10px 14px;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);font-size:13px;text-transform:uppercase;letter-spacing:.05em}
+tbody tr+tr td{border-top:1px solid var(--line)}
+tr.win td{background:var(--win)}
+tr.win td:first-child{font-weight:650;color:var(--accent)}
+.caption{font-size:14px;color:var(--muted);margin-top:10px;text-align:center}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin-top:24px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+.step .k{font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em}
+.step h3{margin-top:8px;font-size:19px}
+.step p{font-size:15px;margin-top:8px}
+code,pre{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.88em}
+code{background:var(--code);padding:2px 6px;border-radius:6px}
+pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:18px 20px;overflow-x:auto;margin-top:20px;line-height:1.55}
+pre code{background:none;padding:0}
+ul{margin:14px 0 0 0;padding-left:0;list-style:none}
+li{color:var(--ink-2);padding:10px 0 10px 26px;position:relative}
+li::before{content:"";position:absolute;left:4px;top:19px;width:8px;height:8px;border-radius:50%;background:var(--accent-2)}
+li+li{border-top:1px solid var(--line)}
+.quote{margin-top:26px;border-left:3px solid var(--accent);padding:6px 0 6px 20px;font-style:italic;color:var(--ink-2)}
+footer{margin-top:96px;padding-top:24px;border-top:1px solid var(--line);font-size:14px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Topiary&nbsp;🌳</h1>
+  <p class="tag">Salience-shaped, prefix-servable MoE checkpoints.
+  A training-free <strong>width axis</strong> that beats lower-bit quantization at equal memory.</p>
+  <p class="epigraph">First we stood on the shoulders of giants;<br>now we ride dragons.</p>
+  <div class="links">
+    <a class="primary" href="https://github.com/jesusluque/topiary">GitHub</a>
+    <a href="https://github.com/jesusluque/topiary/blob/main/paper/topiary.md">Paper draft</a>
+    <a href="#results">Results</a>
+    <a href="#limits">Honest limits</a>
+  </div>
+</header>
+
+<section>
+  <h2>When a model doesn't fit, don't blur it — prune what it barely uses</h2>
+  <p>The standard remedy for an oversized quantized model is fewer bits per weight:
+  a uniform blur over <em>every</em> parameter. Topiary takes the orthogonal axis.
+  It measures which neurons of which experts actually contribute on real traffic,
+  bakes that ranking into the checkpoint as a free permutation, and cuts the file
+  to a prefix. The damage concentrates on what the model barely used. That
+  asymmetry is the entire advantage — and the output is a <strong>standard
+  mlx-lm checkpoint</strong>: no custom kernels, no serving code, no training.</p>
+
+  <div class="steps">
+    <div class="step"><span class="k">1 · Measure</span>
+      <h3>Routed salience</h3>
+      <p><code>salience²ᵢ = E[h²ᵢ] · ‖W<sub>down</sub>[:,i]‖²</code>, accumulated only
+      over tokens the router sends to that expert. Collectable during normal
+      serving at &lt;1% overhead.</p></div>
+    <div class="step"><span class="k">2 · Reorder</span>
+      <h3>Free permutation</h3>
+      <p>Permuting gate/up rows and down columns identically leaves the function
+      exactly unchanged. Sort by importance, bake it into the file.</p></div>
+    <div class="step"><span class="k">3 · Truncate</span>
+      <h3>Cut to a prefix</h3>
+      <p>The file is sorted, so cutting bytes = cutting what contributed least.
+      <code>k</code> is a dial in steps of one quantization group.</p></div>
+  </div>
+</section>
+
+<section id="results">
+  <h2>Results — Qwen3-30B-A3B under a 13–14.5 GB budget</h2>
+  <p>Equal-bytes head-to-head on Apple Silicon (MLX). Twelve-signal suite;
+  the headline six below.</p>
+  <div class="hero-table">
+  <table>
+    <thead><tr><th>Checkpoint</th><th>GB</th><th>Code PPL ↓</th><th>Gen PPL ↓</th>
+      <th>GSM8K</th><th>MMLU</th><th>HumanEval</th><th>IFEval</th></tr></thead>
+    <tbody>
+      <tr class="win"><td>Topiary per-layer</td><td>14.5</td><td>2.64</td><td>10.3</td>
+        <td>94%</td><td>70%</td><td>92%</td><td>74%</td></tr>
+      <tr><td>Topiary w640 uniform</td><td>14.5</td><td>2.70</td><td>10.4</td>
+        <td>94%</td><td>74%</td><td>84%</td><td>76%</td></tr>
+      <tr><td>mixed 3–4-bit</td><td>14.0</td><td>3.07</td><td>13.4</td>
+        <td>82%</td><td>59%</td><td>—</td><td>—</td></tr>
+      <tr><td>community 3-bit</td><td>13.4</td><td>3.26</td><td>15.7</td>
+        <td>88%</td><td>57%</td><td>76%</td><td>68%</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="caption">Calibrated on a mixed corpus (code + math + general text).
+  The flagship adds a depth-tapered per-layer budget — measured law: cut
+  sensitivity grows with depth. Its gaps over the 3-bit are significant under
+  exact paired McNemar (HumanEval p=0.022, MMLU p=0.011); smaller intra-Topiary
+  differences are directional only. Losses are analyzed below, not hidden.</p>
+
+  <p>The improvement chain, measured step by step: block permutation with classic
+  calibration <strong>3.11</strong> → routed statistics <strong>3.02</strong> →
+  neuron granularity <strong>2.87</strong> → mixed calibration + k=640
+  <strong>2.70</strong> code perplexity → per-layer depth taper <strong>2.64</strong>
+  and HumanEval 92%. It generalizes across domains:
+  calibrated on code, still −17% perplexity on WikiText.</p>
+</section>
+
+<section>
+  <h2>The model can do this to itself, live</h2>
+  <p>Because the statistic lives inside the forward pass, a serving model can
+  profile itself on its own traffic and then permute and truncate its weights
+  <strong>in RAM</strong> — 2.9 GB freed in about one second on a 30B model, no
+  restart, no offline calibration phase. A layer-streaming profiler extends
+  calibration to models larger than memory: an 80B profiled with a 1.1 GB peak.</p>
+  <pre><code># profile during serving, then convert
+python src/runtime.py --model mlx-community/Qwen3-30B-A3B-4bit \
+    --data data/calib.jsonl --profile-only --orders-out runs/orders.npz
+python src/convert_block.py --src mlx-community/Qwen3-30B-A3B-4bit \
+    --orders runs/orders.npz --k 576 --out models/my-model-w576</code></pre>
+</section>
+
+<section>
+  <h2>One serving caveat, stated plainly</h2>
+  <p>Uniform-width builds load with <strong>stock mlx-lm</strong> — zero custom
+  code. Per-layer-width builds (the flagship) need a ~30-line loader shim
+  (<code>src/per_layer.py</code>) because a standard config cannot express
+  different widths per layer. If that matters for your deployment, use the
+  uniform sibling; the difference is a few points on generation benchmarks.</p>
+</section>
+
+<section id="limits">
+  <h2>Honest limits — all measured, not speculated</h2>
+  <ul>
+    <li><strong>Coarse experts lose.</strong> On Mixtral (8 experts of width 14336)
+      bits win: over-parameterized experts absorb diffuse noise better than they
+      survive amputation. The failure modes differ visibly — bits blur, width
+      cuts produce confident-but-wrong logic.</li>
+    <li><strong>There is a cliff.</strong> Quality collapses between 40–55% width
+      reduction. Topiary is a mild-compression tool, not a miracle.</li>
+    <li><strong>Tails favor bits.</strong> Benchmarks probing rare capabilities
+      (MATH-500, HellaSwag) prefer bit-reduction, which keeps everything
+      blurry-but-alive; truncation sacrifices what calibration never exercised.</li>
+    <li><strong>~3× compression is out of reach.</strong> Composing bits × width
+      improves 5× over either axis alone, but a smaller native model still wins
+      that regime.</li>
+    <li><strong>Speed is not the lever.</strong> At equal bytes, ±3% tokens/s
+      versus quantization on Apple Silicon batch-1 decode.</li>
+  </ul>
+  <p class="quote">Hierarchy lives in the activations, not the weights — weight
+  spectra are near-Gaussian, weight-only salience is nearly flat, and routed
+  statistics beat whole-corpus calibration. Measured three independent ways.</p>
+</section>
+
+<section>
+  <h2>Try it</h2>
+  <pre><code>git clone https://github.com/jesusluque/topiary && cd topiary
+uv venv && source .venv/bin/activate && uv pip install -e .</code></pre>
+  <p>Self-contained tools: online and streaming profilers, fine and block
+  converters, per-layer allocation, a corpus builder and paired evaluators.
+  Every number in the paper is reproducible from frozen configs.</p>
+
+  <h2 style="margin-top:48px">Checkpoints</h2>
+  <ul>
+    <li><a href="https://huggingface.co/jesusluque/qwen3-30b-topiary"><strong>qwen3-30b-topiary</strong></a>
+      — the flagship: fine build + per-layer depth taper. HumanEval 92%, GSM8K 94%,
+      code PPL 2.64. Needs the 30-line loader shim.</li>
+    <li><a href="https://huggingface.co/jesusluque/qwen3-30b-topiary-w640"><strong>qwen3-30b-topiary-w640</strong></a>
+      — uniform sibling: loads with stock mlx-lm, best MMLU (74%).</li>
+    <li><a href="https://huggingface.co/jesusluque/qwen3-30b-topiary-w576-code"><strong>qwen3-30b-topiary-w576-code</strong></a>
+      — code-calibrated, 13.1 GB: the original equal-bytes head-to-head winner.</li>
+  </ul>
+  <p class="caption">Private until the joint release of method and models.</p>
+</section>
+
+<section id="cite">
+  <h2>Citing Topiary</h2>
+  <p>If you build on this work, please cite:</p>
+  <pre><code>@misc&#123;luque2026topiary,
+  author       = &#123;luque, jesus&#125;,
+  title        = &#123;Topiary: Salience-Shaped, Prefix-Servable
+                  MoE Checkpoints&#125;,
+  year         = &#123;2026&#125;,
+  howpublished = &#123;\url&#123;https://github.com/jesusluque/topiary&#125;&#125;,
+  note         = &#123;Training-free width axis for MoE compression&#125;
+&#125;</code></pre>
+</section>
+
+<footer>
+  Topiary · MIT license · © 2026 jesus luque ·
+  <a href="https://github.com/jesusluque/topiary">github.com/jesusluque/topiary</a>
+</footer>
+
+</main>
+</body>
+</html>

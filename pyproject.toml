@@ -1,0 +1,15 @@
+[project]
+name = "topiary"
+version = "0.1.0"
+description = "Salience-shaped, prefix-servable MoE checkpoints: a training-free width axis that beats lower-bit quantization at equal memory"
+requires-python = ">=3.10"
+dependencies = [
+    "mlx>=0.32.0",
+    "mlx-lm>=0.31.0",
+    "numpy",
+    "datasets",
+    "huggingface_hub",
+]
+
+[tool.ruff]
+line-length = 100
