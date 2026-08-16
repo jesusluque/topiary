@@ -171,6 +171,10 @@ docs/              project page (GitHub Pages)
 Public release (August 2026): method, tools, paper draft and the three
 checkpoints, published together.
 
+The dynamic half of the program — serving MoE models that *don't* fit, via
+gate-governed bit-plane residency on stock kernels — lives in the sibling
+repo: [Topiary Stream](https://github.com/jesusluque/topiary-stream).
+
 ## Citing Topiary
 
 ```bibtex
