@@ -299,8 +299,38 @@ quality within a layer and capacity needed by a layer are different variables.
 Practical note: at equal memory, the sculpted MoE still dominates the sculpted
 dense model (94%/74% at 80 tok/s vs 82%/67% at 14).
 
+### 3.7 Update (August 2026): the knowledge cost, isolated
+
+A four-benchmark suite run after this draft (MATH-500 n=100, MBPP n=100,
+MMLU n=500 subject-stratified, LAMBADA n=500; greedy, fixed seed, identical
+samples — protocol and run records in the topiary-stream companion repo)
+compared the taper flagship against its own unpruned base, same-day and
+same-machine:
+
+| | Qwen3-30B-A3B original (16.4 GB) | Topiary taper (14.5 GB) |
+|---|---|---|
+| MATH-500 | 70% | **72%** |
+| MBPP | **83%** | 81% |
+| MMLU | **78.2%** | 68.2% |
+| LAMBADA | **64.6%** | 60.2% |
+
+Salience pruning preserved reasoning entirely (MATH/MBPP differences are not
+significant) but **cost 10 MMLU points and 4.4 LAMBADA points** — both
+strongly significant at n=500. The taper removes *knowledge*, not
+*reasoning*: the earlier battery (§3.1), being reasoning-heavy and n=100 on
+MMLU, could not see it. This does not change the equal-bytes comparisons
+against quantization baselines (§3.1 stands), but it does change what a
+sculpted checkpoint *is*: a reasoning-preserving, knowledge-lossy compression.
+Same-day interleaved decode-only rounds also correct the speed claim: the
+taper serves at 108.1–108.3 tok/s vs the original's 101.4–103.0 (+6%, with
+−2.7 GB); the earlier "87.0 vs 89.9" compared different sessions.
+
 ## 4. Limitations
 
+- **Knowledge loss under pruning (see §3.7):** −10 MMLU / −4.4 LAMBADA vs the
+  unpruned base at n=500, invisible to reasoning-heavy batteries. If broad
+  world knowledge is the workload, prefer the unpruned checkpoint or a
+  Stream-served larger model.
 - **Calibration-domain sensitivity** is real and measurable (GSM8K, §3.1), and
   correctable: mixed-corpus calibration recovered the full gap at zero cost in
   other metrics. Narrow corpora bias the artifact — which also cuts the other

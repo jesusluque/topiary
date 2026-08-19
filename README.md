@@ -116,6 +116,14 @@ calibration 3.11 → + routed statistics 3.02 → **neuron granularity 2.87**.
 
 ### Honest limits (all measured, not speculated)
 
+- **Pruning costs knowledge, not reasoning** (measured Aug 2026, four-benchmark
+  suite vs the unpruned base, same model, n=500): the taper flagship keeps
+  MATH-500/MBPP intact but pays **−10 MMLU / −4.4 LAMBADA points**. Reasoning-
+  heavy batteries cannot see this — ours didn't until now. If broad world
+  knowledge is your workload, use the unpruned checkpoint (or a Stream-served
+  larger model — see [topiary-stream](https://github.com/jesusluque/topiary-stream)).
+  Speed corrected same-day, interleaved: taper 108 tok/s vs original 101–103
+  (+6%, −2.7 GB). Details: paper §3.7.
 - **Coarse-expert architectures** (Mixtral, 8 experts of width 14336): bits win.
   Over-parameterized experts absorb diffuse quantization noise better than they
   survive amputation. Failure modes differ visibly: bits → diffuse blur;
